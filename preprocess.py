@@ -1,6 +1,7 @@
 import os
 import tifffile as tif
 import numpy as np
+import matplotlib.pyplot as plt #to plot images to see if they loaded in properly
 
 
 def load_tif_data(folder_path):
