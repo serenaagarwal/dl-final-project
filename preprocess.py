@@ -74,11 +74,10 @@ def get_batch(images, masks, batch_size = 4,augment = False):
                 Yb.append(msk)
             yield np.stack(Xb), np.stack(Yb)
 
-
 ###### sample call ######
 root_dir = './data2/pancreatic_cells'
-sample_number = ['01', '02']
-subsamples = list(range(0, 300, 5))
+sample_number = ['01']
+subsamples = list(range(0, 300, 1))
 
 
 if __name__ == '__main__':
