@@ -77,7 +77,7 @@ def get_batch(images, masks, batch_size = 4,augment = False):
 ###### sample call ######
 root_dir = './data2/pancreatic_cells'
 sample_number = ['01']
-subsamples = list(range(0, 300, 1))
+subsamples = list(range(0, 300, 10)) #change last argument to play with subsample
 
 
 if __name__ == '__main__':
