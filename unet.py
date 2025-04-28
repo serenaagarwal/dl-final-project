@@ -1,8 +1,8 @@
 import tensorflow as tf
 import numpy as np
-from .parts import *
+from parts import *
 
-class UNet(tf.keras.layers.Layer):
+class UNet(tf.keras.Model):
     def __init__(self, num_channels=3, num_classes = 1):
         super(UNet, self).__init__()
         #definitely possible to reduce number of layers and simplify if computation is too expensive -SA
@@ -31,7 +31,8 @@ class UNet(tf.keras.layers.Layer):
         x = self.upscale3(x, x2)
         x = self.upscale4(x, x1)
         logits = self.output_conv(x)
-        return logits
+        outputs = tf.keras.activations.sigmoid(logits)
+        return outputs
 
 
 
