@@ -1,14 +1,3 @@
-# # import os
-# # import tifffile as tif
-# # import numpy as np
-# # import matplotlib.pyplot as plt #to plot images to see if they loaded in properly
-
-
-# # def load_tif_data(folder_path):
-# #     image_files = sorted([f for f in os.listdir(folder_path) if f.endswith('.tif')])
-# #     images = [tif.imread(os.path.join(folder_path, f)) for f in image_files]
-# #     return images, image_files
-
 import rasterio #good option per this post: https://stackoverflow.com/questions/68020419/working-with-tiff-images-in-python-for-deep-learning
 import os
 import numpy as np
@@ -73,38 +62,3 @@ def get_batch(images, masks, batch_size = 4,augment = False):
                 Xb.append(img)
                 Yb.append(msk)
             yield np.stack(Xb), np.stack(Yb)
-
-###### sample call ######
-root_dir = './data2/pancreatic_cells'
-sample_number = ['01']
-subsamples = list(range(0, 300, 10)) #change last argument to play with subsample
-
-
-if __name__ == '__main__':
-
-    X, Y = preprocess_data(root_dir, sample_number, subsamples)
-    print('# samples:', len(X), 'input:', X.shape[1:], 'mask:', Y.shape[1:])
-
-    idx = np.arange(len(X))
-    np.random.shuffle(idx)
-    pivot = int(0.8 * len(idx))
-    train_i, test_i = idx[:pivot], idx[pivot:]
-    X_train, Y_train = X[train_i], Y[train_i]
-    X_test, Y_test = X[test_i], Y[test_i]
-    print('training on', len(X_train), 'samples, testing on', len(X_test))
-
-    train = get_batch(X_train, Y_train, 4, True)
-    test = get_batch(X_test, Y_test, 4, False)
-
-    xb, yb = next(train)
-    print('bx shape:', xb.shape, 'yshape:', yb.shape)
-
-
-
-
-
-
-
-
-
-
