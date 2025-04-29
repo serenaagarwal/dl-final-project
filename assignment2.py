@@ -31,7 +31,7 @@ def main():
     samples       = ['01', '02']
     subsamples    = list(range(0, 300, 5)) # last arg means we take every 5th frame (60 samples for this dataset)
     batch_size    = 8
-    epochs        = 20
+    epochs        = 4
     learning_rate = 1e-4
 
     X, Y = preprocess_data(root_dir, samples, subsamples)
