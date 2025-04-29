@@ -126,6 +126,20 @@ def main():
     
     
     model.save('final_unet_model', save_format='tf')
+
+    #trying to save segmentations
+    predictions = model.predict(test_images)
+    predictions = (predictions > 0.5).astype(np.uint8) #binarizing
+
+    save_dir = "predicted masks"
+    os.makedirs(save_dir, exist_ok=True)
+
+    for i, pred_mask in enumerate(predictions): 
+        pred_mask = np.squeeze(pred_mask)
+        save_path = os.path.join(save_dir, f"mask_{i:03d}.png")
+        cv2.imwrite(save_path, pred_mask * 255)
+    print(f"Saved {len(predictions)} predicted masks to '{save_dir}")
+
     print("Model saved successfully!")
 
 if __name__ == "__main__":
