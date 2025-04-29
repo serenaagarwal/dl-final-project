@@ -1,4 +1,5 @@
 import rasterio #good option per this post: https://stackoverflow.com/questions/68020419/working-with-tiff-images-in-python-for-deep-learning
+#it does produce some error message but it's okay to ignore
 import os
 import numpy as np
 from skimage.segmentation import find_boundaries
