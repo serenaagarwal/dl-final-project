@@ -19,28 +19,42 @@ def load_image_mask_pair(root_dir, sample_id, time_idx) -> tuple[np.ndarray, np.
     image_path = os.path.join(root_dir, sample_id, f"t{time_idx:03d}.tif")
     mask_path = os.path.join(root_dir, f"{sample_id}_ST", "SEG", f"man_seg{time_idx:03d}.tif") 
 
-    with rasterio.open(image_path) as src:
-        image = src.read(1)
-    with rasterio.open(mask_path) as src:
-        mask = src.read(1)
-        
-    return image, mask
+    try:
+        with rasterio.open(image_path) as src:
+            image = src.read(1)
+        with rasterio.open(mask_path) as src:
+            mask = src.read(1)
+        return image, mask
+    except Exception as e:
+        print(f"Error loading {image_path} or {mask_path}: {e}")
+        return None, None
 
-def preprocess_data(root_dir, subsamples, timepoints) -> tuple[np.ndarray, np.ndarray]:
+def preprocess_data(root_dir, samples, timepoints) -> tuple[np.ndarray, np.ndarray]:
     #timepoints is the range of time indices to include, see the sample call
     images, masks = [], []
     
-    for sample in subsamples:
+    for sample in samples:
         for time in timepoints:
             img, mask = load_image_mask_pair(root_dir, sample, time)
+            if img is None or mask is None:
+                continue
             
-            img = img.astype(np.float32) / (img.max() or 1)  #normalize
-            binary_mask = (mask > 0).astype(np.uint8)
-            one_hot_mask = np.stack([1 - binary_mask, binary_mask], axis=-1)
+            # Enhance contrast 
+            p_low, p_high = np.percentile(img, [2, 98])
+            img_norm = np.clip((img - p_low) / (p_high - p_low + 1e-6), 0, 1)
+            img_norm = img_norm.astype(np.float32)
             
-            images.append(img[..., np.newaxis])
-            masks.append(one_hot_mask)
-    return np.stack(images), np.stack(masks)
+            
+            binary_mask = (mask > 0).astype(np.float32)
+            
+            images.append(img_norm[..., np.newaxis])
+            masks.append(binary_mask[..., np.newaxis])
+    
+    if not images:
+        raise ValueError("No valid images loaded.")
+        
+    return np.array(images), np.array(masks)
+
 
 ################## sample usage ################## 
 
