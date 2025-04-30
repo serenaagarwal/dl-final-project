@@ -14,6 +14,7 @@ tf.random.set_seed(42)
 #################### Metrics and Loss Functions #####################
 
 def dice_coefficient(y_true, y_pred, smooth=1e-6):
+    # we no longer use this for loss - just model evaluation and determining which is best 
     y_true = tf.cast(y_true, y_pred.dtype)
     y_true_f = tf.keras.backend.flatten(y_true)
     y_pred_f = tf.keras.backend.flatten(y_pred)
@@ -35,8 +36,8 @@ def weighted_binary_crossentropy(y_true, y_pred, pos_weight=10.0):
     
     return weighted_bce
 
-def dice_loss(y_true, y_pred):
-    return 1 - dice_coefficient(y_true, y_pred)
+# def dice_loss(y_true, y_pred):
+#     return 1 - dice_coefficient(y_true, y_pred)
 
 def tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3, smooth=1e-6):
     """version of Dice loss that allows different weights for false positives and false negatives"""
@@ -58,11 +59,11 @@ def combined_loss(y_true, y_pred, alpha=0.5, beta=0.5, pos_weight=10.0):
     tversky = tversky_loss(y_true, y_pred)
     return alpha * weighted_bce + beta * tversky
 
-def bce_dice_loss(y_true, y_pred):
-    """combination of BCE and Dice loss"""
-    bce = tf.keras.losses.BinaryCrossentropy()(y_true, y_pred)
-    dice = dice_loss(y_true, y_pred)
-    return bce + dice
+# def bce_dice_loss(y_true, y_pred):
+#     """combination of BCE and Dice loss"""
+#     bce = tf.keras.losses.BinaryCrossentropy()(y_true, y_pred)
+#     dice = dice_loss(y_true, y_pred)
+#     return bce + dice
 
 # -------- Training and Evaluation --------
 
