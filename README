@@ -1,6 +1,10 @@
+# Poster
+
+![Project Poster Cover](poster.png)
+
 Use same environment that has been set up for course.
 and run the following once inside the environment:
 $ pip install rasterio
 $ pip install scikit-image
 
-
+$ load_model_viz.py
