@@ -4,7 +4,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import rasterio
 from sklearn.model_selection import train_test_split
-
+import plots as plot
 def dice_coefficient(y_true, y_pred, smooth=1e-6):
     y_true = tf.cast(y_true, y_pred.dtype)
     y_true_f = tf.keras.backend.flatten(y_true)
@@ -90,7 +90,7 @@ def preprocess_data(root_dir, samples, timepoints):
     return np.array(images), np.array(masks)
 
 def main():
-    root_dir = './data2/pancreatic_cells'
+    root_dir = './data/pancreatic_cells'
     samples = ['01', '02']
     timepoints = list(range(0, 300, 5))  # Take every 5th frame
     
@@ -175,10 +175,11 @@ def main():
         plt.savefig(os.path.join(save_dir, f'prediction_{i}.png'))
         plt.close()
     
- 
-    print("\nEvaluating model performance...")
-    overall_dice = np.mean([dice_coef_np(y_test[i, ..., 0], binary_predictions[i, ..., 0]) for i in range(len(y_test))])
-    print(f"Overall Dice Score: {overall_dice:.4f}")
+    ### additional plots
+    plot.plot_precision_recall(  y_test[...,0], predictions[...,0] )
+    plot.plot_roc_curve(       y_test[...,0], predictions[...,0] )
+    best_tau = plot.plot_dice_vs_threshold( y_test[...,0], predictions[...,0] )
+    plot.save_triplet( X_test[0,...,0], y_test[0,...,0], (predictions[0,...,0]>best_tau).astype(np.uint8) )
 
 def dice_coef_np(y_true, y_pred, smooth=1e-6):
     #just for evaluation purposes because the orig method causes Cannot convert 2.0 to EagerTensor of dtype uint8

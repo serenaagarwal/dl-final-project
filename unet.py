@@ -1,40 +1,87 @@
-import tensorflow as tf
+import os
 import numpy as np
-from parts import *
+import tensorflow as tf
+import rasterio
+from tensorflow.keras.optimizers.legacy import Adam
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
-class UNet(tf.keras.Model):
-    def __init__(self, num_channels=3, num_classes = 1):
-        super(UNet, self).__init__()
-        #definitely possible to reduce number of layers and simplify if computation is too expensive -SA
-        self.num_channels = num_channels
-        self.num_classes = num_classes
-
-        self.input_conv = DoubleConv(num_channels, 64)
-        self.downscale1 = Downscale(64, 128)
-        self.downscale2 = Downscale(128, 256)
-        self.downscale3 = Downscale(256, 512)
-        self.downscale4 = Downscale(512, 512)
-        self.upscale1 = Upscale(1024, 256)
-        self.upscale2 = Upscale(512, 128)
-        self.upscale3 = Upscale(256, 64)
-        self.upscale4 = Upscale(128, 64)
-        self.output_conv = OutConv(64, num_classes)
-
-    def call(self, x):
-        x1 = self.input_conv(x)
-        x2 = self.downscale1(x1)
-        x3 = self.downscale2(x2)
-        x4 = self.downscale3(x3)
-        x5 = self.downscale4(x4)
-        x = self.upscale1(x5, x4)
-        x = self.upscale2(x, x3)
-        x = self.upscale3(x, x2)
-        x = self.upscale4(x, x1)
-        logits = self.output_conv(x)
-        outputs = tf.keras.activations.sigmoid(logits)
-        return outputs
-
-
-
-
-
+def unet_model(input_shape, filters_base=16):
+    inputs = tf.keras.layers.Input(input_shape)
+    
+    # Data normalization
+    normalized = tf.keras.layers.Lambda(lambda x: x / tf.reduce_max(x))(inputs)
+    
+    # Contracting path
+    c1 = tf.keras.layers.Conv2D(filters_base, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(normalized)
+    c1 = tf.keras.layers.BatchNormalization()(c1)
+    c1 = tf.keras.layers.Dropout(0.1)(c1)
+    c1 = tf.keras.layers.Conv2D(filters_base, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c1)
+    c1 = tf.keras.layers.BatchNormalization()(c1)
+    p1 = tf.keras.layers.MaxPooling2D((2, 2))(c1)
+    
+    c2 = tf.keras.layers.Conv2D(filters_base*2, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(p1)
+    c2 = tf.keras.layers.BatchNormalization()(c2)
+    c2 = tf.keras.layers.Dropout(0.1)(c2)
+    c2 = tf.keras.layers.Conv2D(filters_base*2, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c2)
+    c2 = tf.keras.layers.BatchNormalization()(c2)
+    p2 = tf.keras.layers.MaxPooling2D((2, 2))(c2)
+    
+    c3 = tf.keras.layers.Conv2D(filters_base*4, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(p2)
+    c3 = tf.keras.layers.BatchNormalization()(c3)
+    c3 = tf.keras.layers.Dropout(0.2)(c3)
+    c3 = tf.keras.layers.Conv2D(filters_base*4, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c3)
+    c3 = tf.keras.layers.BatchNormalization()(c3)
+    p3 = tf.keras.layers.MaxPooling2D((2, 2))(c3)
+    
+    c4 = tf.keras.layers.Conv2D(filters_base*8, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(p3)
+    c4 = tf.keras.layers.BatchNormalization()(c4)
+    c4 = tf.keras.layers.Dropout(0.2)(c4)
+    c4 = tf.keras.layers.Conv2D(filters_base*8, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c4)
+    c4 = tf.keras.layers.BatchNormalization()(c4)
+    p4 = tf.keras.layers.MaxPooling2D((2, 2))(c4)
+    
+    # bottom of the u 
+    c5 = tf.keras.layers.Conv2D(filters_base*16, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(p4)
+    c5 = tf.keras.layers.BatchNormalization()(c5)
+    c5 = tf.keras.layers.Dropout(0.3)(c5)
+    c5 = tf.keras.layers.Conv2D(filters_base*16, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c5)
+    c5 = tf.keras.layers.BatchNormalization()(c5)
+    
+    # Expansive path
+    u6 = tf.keras.layers.Conv2DTranspose(filters_base*8, (2, 2), strides=(2, 2), padding='same')(c5)
+    u6 = tf.keras.layers.concatenate([u6, c4])
+    c6 = tf.keras.layers.Conv2D(filters_base*8, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(u6)
+    c6 = tf.keras.layers.BatchNormalization()(c6)
+    c6 = tf.keras.layers.Dropout(0.2)(c6)
+    c6 = tf.keras.layers.Conv2D(filters_base*8, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c6)
+    c6 = tf.keras.layers.BatchNormalization()(c6)
+    
+    u7 = tf.keras.layers.Conv2DTranspose(filters_base*4, (2, 2), strides=(2, 2), padding='same')(c6)
+    u7 = tf.keras.layers.concatenate([u7, c3])
+    c7 = tf.keras.layers.Conv2D(filters_base*4, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(u7)
+    c7 = tf.keras.layers.BatchNormalization()(c7)
+    c7 = tf.keras.layers.Dropout(0.2)(c7)
+    c7 = tf.keras.layers.Conv2D(filters_base*4, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c7)
+    c7 = tf.keras.layers.BatchNormalization()(c7)
+    
+    u8 = tf.keras.layers.Conv2DTranspose(filters_base*2, (2, 2), strides=(2, 2), padding='same')(c7)
+    u8 = tf.keras.layers.concatenate([u8, c2])
+    c8 = tf.keras.layers.Conv2D(filters_base*2, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(u8)
+    c8 = tf.keras.layers.BatchNormalization()(c8)
+    c8 = tf.keras.layers.Dropout(0.1)(c8)
+    c8 = tf.keras.layers.Conv2D(filters_base*2, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c8)
+    c8 = tf.keras.layers.BatchNormalization()(c8)
+    
+    u9 = tf.keras.layers.Conv2DTranspose(filters_base, (2, 2), strides=(2, 2), padding='same')(c8)
+    u9 = tf.keras.layers.concatenate([u9, c1])
+    c9 = tf.keras.layers.Conv2D(filters_base, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(u9)
+    c9 = tf.keras.layers.BatchNormalization()(c9)
+    c9 = tf.keras.layers.Dropout(0.1)(c9)
+    c9 = tf.keras.layers.Conv2D(filters_base, (3, 3), activation='relu', kernel_initializer='he_normal', padding='same')(c9)
+    c9 = tf.keras.layers.BatchNormalization()(c9)
+    
+    outputs = tf.keras.layers.Conv2D(1, (1, 1), activation='sigmoid')(c9)
+    
+    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    return model
